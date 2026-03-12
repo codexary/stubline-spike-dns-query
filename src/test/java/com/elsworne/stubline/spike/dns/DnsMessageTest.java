@@ -101,7 +101,9 @@ class DnsMessageTest {
                 byte[] answer = Files.readAllBytes(Path.of("src/test/resources/example-com-a.bin"));
                 answer[0] = query.getData()[0];
                 answer[1] = query.getData()[1];
-                attacker.send(new DatagramPacket(answer, answer.length, query.getSocketAddress()));
+                byte[] forged = answer.clone();
+                forged[3] = (byte) ((forged[3] & 0xf0) | 3);
+                attacker.send(new DatagramPacket(forged, forged.length, query.getSocketAddress()));
                 Thread.sleep(50);
                 resolver.send(new DatagramPacket(answer, answer.length, query.getSocketAddress()));
                 return null;
@@ -114,6 +116,7 @@ class DnsMessageTest {
               1,
               null);
       exchange.get();
+      assertEquals(0, response.rcode());
       assertEquals(2, response.answers().size());
     }
   }
