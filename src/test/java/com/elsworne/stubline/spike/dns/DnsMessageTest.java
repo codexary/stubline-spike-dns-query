@@ -49,6 +49,16 @@ class DnsMessageTest {
   }
 
   @Test
+  void decodesRecordedCnameAndAAnswer() throws Exception {
+    byte[] bytes = Files.readAllBytes(Path.of("src/test/resources/github-cname.bin"));
+    var response = DnsMessage.decode(bytes, bytes.length);
+    assertEquals("www.github.com", response.answers().get(0).name());
+    assertEquals("CNAME", response.answers().get(0).type());
+    assertEquals("github.com", response.answers().get(0).value());
+    assertEquals("A", response.answers().get(1).type());
+  }
+
+  @Test
   void timesOutAndRetriesThreeTimes() throws Exception {
     try (var sink = new DatagramSocket(0);
         var executor = Executors.newSingleThreadExecutor()) {

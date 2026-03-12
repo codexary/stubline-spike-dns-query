@@ -18,14 +18,30 @@ public final class DnsMain {
     int port = args.length > 2 ? Integer.parseInt(args[2]) : 53;
     int timeout = args.length > 3 ? Integer.parseInt(args[3]) : 1000;
     Path capture = args.length > 4 ? Path.of(args[4]) : null;
-    var response = lookup(domain, new InetSocketAddress(host, port), timeout, 3, capture);
+    int attempts = 3;
+    DnsMessage.Response response;
+    try {
+      response = lookup(domain, new InetSocketAddress(host, port), timeout, attempts, capture);
+    } catch (SocketTimeoutException e) {
+      System.err.printf(
+          "Resolver %s:%d did not answer after %d attempts (%d ms per attempt)%n",
+          host, port, attempts, timeout);
+      System.exit(1);
+      return;
+    }
     System.out.println("rcode=" + response.rcode() + " truncated=" + response.truncated());
     response
         .answers()
         .forEach(
             answer ->
                 System.out.println(
-                    answer.name() + " A " + answer.address() + " TTL=" + answer.ttl()));
+                    answer.name()
+                        + " "
+                        + answer.type()
+                        + " "
+                        + answer.value()
+                        + " TTL="
+                        + answer.ttl()));
   }
 
   public static DnsMessage.Response lookup(

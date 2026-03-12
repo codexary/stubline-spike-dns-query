@@ -13,6 +13,8 @@
 
 第一条命令以 0 退出，没有正常输出。第二条输出 `rcode=0 truncated=false`，然后输出一行或多行 `example.com A <address> TTL=<seconds>`。地址和 TTL 随 resolver 的响应而变。第四个参数是毫秒级 timeout；程序最多尝试三次。可选的第五个参数是保存原始响应字节的文件路径。仓库中的 `example-com-a.bin` 和 `nxdomain.bin` 通过本程序从 1.1.1.1 采集。测试解码这些字节，在复制的响应中设置 TC 位，并使用本地 UDP 接收端验证三次超时和重试。
 
+成功响应也输出 CNAME 别名，例如 `www.github.com CNAME github.com`。解析器无响应时，程序向 stderr 输出一行超时信息并以状态 1 退出。
+
 ## 许可证
 
 本仓库采用 [MIT License](LICENSE)。

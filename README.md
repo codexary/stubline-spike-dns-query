@@ -13,6 +13,8 @@ Install Java 21. The Maven wrapper uses Maven 3.9.16. From the repository root:
 
 The first command exits 0 with no normal output. The second prints `rcode=0 truncated=false` followed by one or more `example.com A <address> TTL=<seconds>` lines. Addresses and TTLs change with the resolver response. The fourth argument is timeout milliseconds; the program makes up to three attempts. An optional fifth argument is a file path for saving the raw response bytes. The checked-in `example-com-a.bin` and `nxdomain.bin` fixtures were captured through this program from 1.1.1.1. Tests decode those bytes, set TC in a copied response, and use a local UDP sink to verify three timeouts and retries.
 
+A successful response also prints CNAME aliases, such as `www.github.com CNAME github.com`. An unanswered resolver prints one timeout line to stderr and exits 1.
+
 ## License
 
 This repository is licensed under the [MIT License](LICENSE).

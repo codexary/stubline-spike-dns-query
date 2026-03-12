@@ -10,7 +10,11 @@ import java.util.List;
 
 /** Minimal DNS wire-format encoder and A-answer decoder. */
 public final class DnsMessage {
-  public record Answer(String name, int ttl, String address) {}
+  public record Answer(String name, String type, int ttl, String value) {
+    public String address() {
+      return value;
+    }
+  }
 
   public record Response(int id, int rcode, boolean truncated, List<Answer> answers) {}
 
@@ -67,10 +71,17 @@ public final class DnsMessage {
         decoded.add(
             new Answer(
                 name,
+                "A",
                 (int) Math.min(ttl, Integer.MAX_VALUE),
                 InetAddress.getByAddress(
                         java.util.Arrays.copyOfRange(data, offset[0], offset[0] + 4))
                     .getHostAddress()));
+      if (type == 5 && kind == 1) {
+        int[] nameOffset = {offset[0]};
+        String target = readName(data, length, nameOffset);
+        if (nameOffset[0] != offset[0] + rdLength) throw new IOException("Invalid CNAME length");
+        decoded.add(new Answer(name, "CNAME", (int) Math.min(ttl, Integer.MAX_VALUE), target));
+      }
       offset[0] += rdLength;
     }
     return new Response(u16(data, 0), flags & 15, (flags & 0x0200) != 0, List.copyOf(decoded));
