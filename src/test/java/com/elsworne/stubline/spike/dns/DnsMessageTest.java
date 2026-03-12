@@ -86,4 +86,35 @@ class DnsMessageTest {
       assertEquals(3, count.get());
     }
   }
+
+  @Test
+  void ignoresMatchingIdFromDifferentPort() throws Exception {
+    try (var resolver = new DatagramSocket(0);
+        var attacker = new DatagramSocket(0);
+        var executor = Executors.newSingleThreadExecutor()) {
+      resolver.setSoTimeout(1000);
+      var exchange =
+          executor.submit(
+              () -> {
+                var query = new DatagramPacket(new byte[512], 512);
+                resolver.receive(query);
+                byte[] answer = Files.readAllBytes(Path.of("src/test/resources/example-com-a.bin"));
+                answer[0] = query.getData()[0];
+                answer[1] = query.getData()[1];
+                attacker.send(new DatagramPacket(answer, answer.length, query.getSocketAddress()));
+                Thread.sleep(50);
+                resolver.send(new DatagramPacket(answer, answer.length, query.getSocketAddress()));
+                return null;
+              });
+      var response =
+          DnsMain.lookup(
+              "example.com",
+              new InetSocketAddress("127.0.0.1", resolver.getLocalPort()),
+              500,
+              1,
+              null);
+      exchange.get();
+      assertEquals(2, response.answers().size());
+    }
+  }
 }

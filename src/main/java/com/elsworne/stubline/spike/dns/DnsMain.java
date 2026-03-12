@@ -56,16 +56,25 @@ public final class DnsMain {
       for (int attempt = 1; attempt <= attempts; attempt++) {
         socket.send(new DatagramPacket(query, query.length, resolver));
         try {
-          byte[] bytes = new byte[4096];
-          var reply = new DatagramPacket(bytes, bytes.length);
-          socket.receive(reply);
-          var decoded = DnsMessage.decode(bytes, reply.getLength());
-          if (decoded.id() != id) continue;
-          if (capture != null)
-            Files.write(capture, java.util.Arrays.copyOf(bytes, reply.getLength()));
-          if (decoded.truncated())
-            throw new IllegalStateException("DNS answer truncated; retry over TCP is required");
-          return decoded;
+          long expires =
+              System.nanoTime() + java.util.concurrent.TimeUnit.MILLISECONDS.toNanos(timeoutMillis);
+          while (true) {
+            long remaining = expires - System.nanoTime();
+            if (remaining <= 0) throw new SocketTimeoutException("No matching DNS response");
+            socket.setSoTimeout(
+                (int) Math.max(1, java.util.concurrent.TimeUnit.NANOSECONDS.toMillis(remaining)));
+            byte[] bytes = new byte[4096];
+            var reply = new DatagramPacket(bytes, bytes.length);
+            socket.receive(reply);
+            if (!reply.getSocketAddress().equals(resolver)) continue;
+            var decoded = DnsMessage.decode(bytes, reply.getLength());
+            if (decoded.id() != id) continue;
+            if (capture != null)
+              Files.write(capture, java.util.Arrays.copyOf(bytes, reply.getLength()));
+            if (decoded.truncated())
+              throw new IllegalStateException("DNS answer truncated; retry over TCP is required");
+            return decoded;
+          }
         } catch (SocketTimeoutException e) {
           if (attempt == attempts) throw e;
         }
